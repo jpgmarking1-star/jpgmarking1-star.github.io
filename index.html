@@ -33,6 +33,7 @@ button,input{padding:15px;font-size:18px;border-radius:10px;border:none;margin-t
 
 <div id="choices" class="choices"></div>
 <div id="result"></div>
+<button id="restartBtn" style="display:none;" onclick="restartGame()">다시 시작</button>
 <div id="leaderboard"></div>
 </div>
 </div>
@@ -58,7 +59,18 @@ function startGame(){
  document.getElementById("player").innerText="👤 "+name;
  document.getElementById("name-area").style.display="none";
  document.getElementById("game").style.display="block";
+ document.getElementById("restartBtn").style.display="none";
+ updateScore();
  updateLeaderboard();
+ generateProblem();
+}
+
+function restartGame(){
+ score=0;
+ gameOver=false;
+ document.getElementById("result").innerText="";
+ document.getElementById("restartBtn").style.display="none";
+ updateScore();
  generateProblem();
 }
 
@@ -149,6 +161,7 @@ function endGame(){
  document.getElementById("result").innerText=`게임 종료 😢 최종 점수: ${score}`;
  document.getElementById("input-area").style.display="none";
  document.getElementById("choices").innerHTML="";
+ document.getElementById("restartBtn").style.display="block";
  clearInterval(timerInterval);
  saveScore();
 }
