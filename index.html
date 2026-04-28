@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>율빛초 수학 대회</title>
+<style>
+body {font-family: Arial; text-align:center; margin:0; background:#2d6cdf; color:black;}
+#box {max-width:520px; margin:60px auto; padding:30px; border-radius:16px; background:#f2f2f2;}
+button,input{padding:15px;font-size:18px;border-radius:10px;border:none;margin-top:10px;width:85%;}
+.choices button{width:100%;margin:8px 0;}
+#leaderboard{margin-top:15px; font-size:14px;}
+</style>
+</head>
+<body>
+<div id="box">
+<h1>🏆 율빛초 수학 대회</h1>
+
+<div id="name-area">
+<input id="nameInput" placeholder="이름 입력">
+<button onclick="startGame()">시작</button>
+</div>
+
+<div id="game" style="display:none;">
+<div id="player"></div>
+<div id="score">점수: 0</div>
+<div id="timer">보너스 시간: 30초</div>
+<div id="question"></div>
+
+<div id="input-area">
+<input id="answer" placeholder="답 입력">
+<button onclick="checkAnswer()">제출</button>
+</div>
+
+<div id="choices" class="choices"></div>
+<div id="result"></div>
+<div id="leaderboard"></div>
+</div>
+</div>
+
+<script>
+let correctAnswer, score=0, timeLeft=30, timerInterval, playerName="";
+let gameOver=false;
+
+function rand(a,b){return Math.random()*(b-a)+a}
+function format(n){return parseFloat(n.toFixed(2))}
+
+function isValidDivision(a,b){
+ let v=a/b;
+ return Math.abs(v*100-Math.round(v*100))<1e-9;
+}
+
+function startGame(){
+ let name=document.getElementById("nameInput").value.trim();
+ if(!name) return alert("이름 입력");
+ playerName=name;
+ score=0;
+ gameOver=false;
+ document.getElementById("player").innerText="👤 "+name;
+ document.getElementById("name-area").style.display="none";
+ document.getElementById("game").style.display="block";
+ updateLeaderboard();
+ generateProblem();
+}
+
+function startTimer(){
+ clearInterval(timerInterval);
+ timeLeft=30;
+ document.getElementById("timer").innerText=`보너스 시간: ${timeLeft}초`;
+ timerInterval=setInterval(()=>{
+  timeLeft--;
+  if(timeLeft>=0){
+    document.getElementById("timer").innerText=`보너스 시간: ${timeLeft}초`;
+  }else{
+    document.getElementById("timer").innerText="보너스 종료 (10점)";
+    clearInterval(timerInterval);
+  }
+ },1000);
+}
+
+function pickType(){
+ let types=[1,2,3,4,1,2,3,4,6,0,5];
+ return types[Math.floor(Math.random()*types.length)];
+}
+
+function generateProblem(){
+ if(gameOver) return;
+
+ document.getElementById("result").innerText="";
+ document.getElementById("choices").innerHTML="";
+ document.getElementById("input-area").style.display="block";
+ startTimer();
+
+ let a,b,type;
+
+ do{
+  type=pickType();
+  switch(type){
+   case 1: a=rand(2,10).toFixed(1); b=Math.floor(rand(2,9)); break;
+   case 2: a=rand(1,5).toFixed(1); b=Math.floor(rand(6,10)); break;
+   case 3: a=(Math.floor(rand(1,9))+0.0).toFixed(1); b=Math.floor(rand(2,9)); break;
+   case 4: a=rand(1,5).toFixed(1); b=Math.floor(rand(6,10)); break;
+   case 5: do{a=Math.floor(rand(2,20)); b=Math.floor(rand(2,9));}while(a%b===0); break;
+   case 6: a=rand(10,99).toFixed(1); b=Math.floor(rand(2,9)); break;
+   default: b=Math.floor(rand(2,9)); let k=Math.floor(rand(2,10)); a=(b*k).toFixed(1);
+  }
+  a=parseFloat(a);
+ }while(!isValidDivision(a,b));
+
+ let real=format(a/b);
+ correctAnswer=real;
+
+ document.getElementById("question").innerText=`문제: ${a} ÷ ${b} = ?`;
+ document.getElementById("answer").value="";
+
+ if(type===6){
+   document.getElementById("input-area").style.display="none";
+   let opts=[real, real*10, real/10, real*100].map(x=>format(x));
+   opts.sort(()=>Math.random()-0.5);
+   opts.forEach(o=>{
+     let btn=document.createElement("button");
+     btn.innerText=o;
+     btn.onclick=()=>checkMC(o);
+     document.getElementById("choices").appendChild(btn);
+   });
+ }
+}
+
+function isBonusTime(){return timeLeft>=0}
+
+function saveScore(){
+ let data=JSON.parse(localStorage.getItem("scores")||"{}");
+ if(!data[playerName]||data[playerName]<score){
+   data[playerName]=score;
+ }
+ localStorage.setItem("scores",JSON.stringify(data));
+ updateLeaderboard();
+}
+
+function updateLeaderboard(){
+ let data=JSON.parse(localStorage.getItem("scores")||"{}");
+ let arr=Object.entries(data).sort((a,b)=>b[1]-a[1]).slice(0,5);
+ let html="🏅 순위<br>";
+ arr.forEach(([n,s],i)=>{html+=`${i+1}. ${n} : ${s}<br>`});
+ document.getElementById("leaderboard").innerHTML=html;
+}
+
+function endGame(){
+ gameOver=true;
+ document.getElementById("result").innerText=`게임 종료 😢 최종 점수: ${score}`;
+ document.getElementById("input-area").style.display="none";
+ document.getElementById("choices").innerHTML="";
+ clearInterval(timerInterval);
+ saveScore();
+}
+
+function checkAnswer(){
+ if(gameOver) return;
+ clearInterval(timerInterval);
+ let user=parseFloat(answer.value);
+ if(user===correctAnswer){
+  let g=isBonusTime()?20:10;
+  score+=g;
+  result.innerText=`정답! (+${g})`;
+  updateScore(); saveScore();
+  setTimeout(generateProblem,1000);
+ }else{
+  result.innerText=`오답 😢 정답:${correctAnswer}`;
+  endGame();
+ }
+}
+
+function checkMC(choice){
+ if(gameOver) return;
+ clearInterval(timerInterval);
+ if(parseFloat(choice)===correctAnswer){
+  let g=isBonusTime()?20:10;
+  score+=g;
+  result.innerText=`정답! (+${g})`;
+  updateScore(); saveScore();
+  setTimeout(generateProblem,1000);
+ }else{
+  result.innerText=`오답 😢 정답:${correctAnswer}`;
+  endGame();
+ }
+}
+
+function updateScore(){
+ document.getElementById("score").innerText=`점수: ${score}`;
+}
+
+console.assert(isValidDivision(7,6)===false);
+console.assert(isValidDivision(1.2,3)===true);
+</script>
+</body>
+</html>
